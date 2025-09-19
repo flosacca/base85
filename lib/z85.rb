@@ -9,7 +9,7 @@ module GeneralBase85
     end
     f.freeze
 
-    g = {}
+    g = Array.new(256)
     f.each_with_index do |v, i|
       g[v] = i
     end
@@ -25,80 +25,73 @@ module GeneralBase85
 
   def encode(str)
     enc = str.encoding
-    str = str.b
+    t = str.b
 
-    l = str.size
-    while str.size % 4 != 0
-      str << 0
+    l = t.size
+    if l % 4 != 0
+      t += "\0" * (4 - l % 4)
     end
-
-    digits = []
-    str.unpack('N*').each do |v|
-      # 'N' for big-endian u32
-      a = v / P4
-      b = v / P3 % P
-      c = v / P2 % P
-      d = v / P % P
-      e = v % P
-      digits.push(a, b, c, d, e)
-    end
-    digits.pop(str.size - l)
 
     f = forward_table
-    char_codes = digits.map { |v| f[v] }
-    encoded = char_codes.pack('C*')
+    s = String.new(capacity: t.size / 4 * 5)
+    t.unpack('N*') do |v|
+      s << f[v / P4] \
+        << f[v / P3 % P] \
+        << f[v / P2 % P] \
+        << f[v / P % P] \
+        << f[v % P]
+    end
+    s[s.size - (t.size - l)..] = ''
 
     if enc.ascii_compatible?
-      encoded.force_encoding(enc)
+      s.force_encoding(enc)
     end
-    encoded
+    s
   end
 
   def decode(str)
-    l = str.bytesize
+    enc = str.encoding
+    s = str.b
+
+    l = s.size
     if l % 5 == 1
       raise ArgumentError, 'illegal length'
     end
+    if l % 5 != 0
+      s += forward_table[84].chr * (5 - l % 5)
+    end
+    s = s.bytes
 
     g = backward_table
-    digits = str.each_byte.map { |v|
-      i = g[v]
-      if i == nil
+    r = []
+    0.step(s.size - 1, 5) do |i|
+      begin
+        v = g[s[i]] * P4 \
+          + g[s[i + 1]] * P3 \
+          + g[s[i + 2]] * P2 \
+          + g[s[i + 3]] * P \
+          + g[s[i + 4]]
+      rescue NoMethodError
         raise ArgumentError, 'invalid char'
       end
-      i
-    }
-
-    while digits.size % 5 != 0
-      digits << 84
-    end
-
-    values = []
-    digits.each_slice(5) do |a, b, c, d, e|
-      v = a * P4 + b * P3 + c * P2 + d * P + e
       if v >= B4
         raise ArgumentError, 'invalid value'
       end
-      values << v
+      r << v
     end
 
-    m = digits.size - l
-    if m == 0
-      decoded = values.pack('N*')
-    else
-      last = values.pop
-      if last % B ** m >= P ** m
-        raise ArgumentError, 'bad representation'
-      end
-      decoded = values.pack('N*')
-      decoded << [last].pack('N')[0, 4 - m]
+    m = s.size - l
+    if m != 0 && r[-1] % B ** m >= P ** m
+      raise ArgumentError, 'bad representation'
     end
+    t = r.pack('N*')
+    t[t.size - m..] = ''
 
-    decoded.force_encoding(str.encoding)
-    if !decoded.valid_encoding?
-      decoded.force_encoding(Encoding::ASCII_8BIT)
+    t.force_encoding(enc)
+    if !t.valid_encoding?
+      t.force_encoding(Encoding::ASCII_8BIT)
     end
-    decoded
+    t
   end
 end
 

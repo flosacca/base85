@@ -16,8 +16,8 @@ describe Z85 do
   end
 
   it 'handles multibyte characters' do
-    assert_invertible 'おやすみ', '<ai9FF}SfnND5>k'
-    assert_invertible 'こんにちは', '<aiAOF%kkCTk!=8<ajx'
+    assert_invertible "\u304a\u3084\u3059\u307f", '<ai9FF}SfnND5>k'
+    assert_invertible "\u3053\u3093\u306b\u3061\u306f", '<aiAOF%kkCTk!=8<ajx'
   end
 
   describe 'the decoder' do
@@ -46,7 +46,7 @@ describe Z85 do
   end
 
   def assert_invertible(binary, ascii)
-    assert_equal Z85.encode(binary), ascii
-    assert_equal Z85.decode(ascii), binary
+    assert_equal ascii, Z85.encode(binary)
+    assert_equal binary, Z85.decode(ascii)
   end
 end
