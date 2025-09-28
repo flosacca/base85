@@ -4,7 +4,7 @@ class Base85
 
   attr_reader :chars
 
-  def initialize(chars)
+  def initialize(chars, &block)
     @chars = -chars
 
     f = chars.bytes
@@ -20,6 +20,10 @@ class Base85
     end
     g.freeze
     @backward_table = g
+
+    if block
+      singleton_class.class_eval(&block)
+    end
   end
 
   def encode(str)
@@ -104,4 +108,51 @@ class Base85
     *?&<>()[]{
     }@%$#
   ].join)
+
+  Rfc1924 = new(%w[
+    0123456789
+    ABCDEFGHIJ
+    KLMNOPQRST
+    UVWXYZabcd
+    efghijklmn
+    opqrstuvwx
+    yz!#$%&()*
+    +-;<=>?@^_
+    `{|}~
+  ].join)
+
+  Ascii85 = new([*'!'..'u'].join) do
+    def encode(str)
+      t = super(str)
+      enc = t.encoding
+      t = t.b
+      s = ''.b
+      k = 0
+      while k < t.size
+        i = k
+        loop do
+          i = t.index('!!!!!', i)
+          if i.nil? || i % 5 == 0
+            break
+          end
+          i += 5 - i % 5
+        end
+        if i.nil?
+          s << t[k..]
+          break
+        end
+        s << t[k...i] << 'z'
+        k = i + 5
+      end
+      s.force_encoding(enc)
+    end
+
+    def decode(str, ignore_spaces: true)
+      if ignore_spaces
+        str = str.delete("\0\t\n\v\f\r ")
+      end
+      str = str.gsub('z', '!!!!!')
+      super(str)
+    end
+  end
 end
