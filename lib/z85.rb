@@ -1,26 +1,25 @@
-module GeneralBase85
+class Base85
   P, P2, P3, P4 = 85, 85 ** 2, 85 ** 3, 85 ** 4
   B, B4 = 256, 256 ** 4
 
-  def self.new(chars)
-    f = chars.unpack('C*')
+  attr_reader :chars
+
+  def initialize(chars)
+    @chars = -chars
+
+    f = chars.bytes
     if f.size != 85 || f.uniq.size != f.size
       raise ArgumentError
     end
     f.freeze
+    @forward_table = f
 
     g = Array.new(256)
     f.each_with_index do |v, i|
       g[v] = i
     end
     g.freeze
-
-    mod = self
-    Module.new do
-      include mod
-      define_method(:forward_table) { f }
-      define_method(:backward_table) { g }
-    end
+    @backward_table = g
   end
 
   def encode(str)
@@ -32,7 +31,7 @@ module GeneralBase85
       t += "\0" * (4 - l % 4)
     end
 
-    f = forward_table
+    f = @forward_table
     s = String.new(capacity: t.size / 4 * 5)
     t.unpack('N*') do |v|
       s << f[v / P4] \
@@ -58,11 +57,11 @@ module GeneralBase85
       raise ArgumentError, 'illegal length'
     end
     if l % 5 != 0
-      s += forward_table[84].chr * (5 - l % 5)
+      s += @forward_table[84].chr * (5 - l % 5)
     end
     s = s.bytes
 
-    g = backward_table
+    g = @backward_table
     r = []
     0.step(s.size - 1, 5) do |i|
       begin
@@ -93,10 +92,8 @@ module GeneralBase85
     end
     t
   end
-end
 
-module Z85
-  CHARS = %w[
+  Z85 = new(%w[
     0123456789
     abcdefghij
     klmnopqrst
@@ -106,7 +103,5 @@ module Z85
     YZ.-:+=^!/
     *?&<>()[]{
     }@%$#
-  ].join.freeze
-
-  extend GeneralBase85.new(CHARS)
+  ].join)
 end

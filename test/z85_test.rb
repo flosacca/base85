@@ -1,5 +1,7 @@
 require 'z85'
 
+Z85 = Base85::Z85
+
 describe Z85 do
   it 'preserves encoding' do
     assert_bidirectional '', ''
