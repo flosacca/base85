@@ -102,6 +102,16 @@ class Base85
     t
   end
 
+  def to_s
+    sym = self.class.constants.find { |sym|
+      self.class.const_get(sym).equal?(self)
+    }
+    sym ? "#{self.class}::#{sym}" : super
+  end
+
+  alias inspect to_s
+  alias name to_s
+
   Z85 = new(%w[
     0123456789
     abcdefghij
