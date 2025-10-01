@@ -5,9 +5,9 @@ class Base85
   attr_reader :chars
 
   def initialize(chars, &block)
-    @chars = -chars
+    @chars = chars.dup.freeze
 
-    f = chars.bytes
+    f = chars.unpack('C*')
     if f.size != 85 || f.uniq.size != f.size
       raise ArgumentError
     end
@@ -36,7 +36,7 @@ class Base85
     end
 
     f = @forward_table
-    s = String.new(capacity: t.size / 4 * 5)
+    s = ''.b
     t.unpack('N*') do |v|
       s << f[v / P4] \
         << f[v / P3 % P] \
@@ -44,7 +44,7 @@ class Base85
         << f[v / P % P] \
         << f[v % P]
     end
-    s[s.size - (t.size - l)..] = ''
+    s[s.size - (t.size - l)..-1] = ''
 
     if enc.ascii_compatible?
       s.force_encoding(enc)
@@ -64,6 +64,9 @@ class Base85
       s += @forward_table[84].chr * (5 - l % 5)
     end
     s = s.bytes
+    if !(Array === s)
+      s = s.unpack('C*')
+    end
 
     g = @backward_table
     r = []
@@ -88,7 +91,7 @@ class Base85
       raise ArgumentError, 'bad representation'
     end
     t = r.pack('N*')
-    t[t.size - m..] = ''
+    t[t.size - m..-1] = ''
 
     t.force_encoding(enc)
     if !t.valid_encoding?
@@ -138,7 +141,7 @@ class Base85
           i += 5 - i % 5
         end
         if i.nil?
-          s << t[k..]
+          s << t[k..-1]
           break
         end
         s << t[k...i] << 'z'
@@ -147,7 +150,7 @@ class Base85
       s.force_encoding(enc)
     end
 
-    def decode(str, ignore_spaces: true)
+    def decode(str, ignore_spaces = true)
       if ignore_spaces
         str = str.delete("\0\t\n\v\f\r ")
       end

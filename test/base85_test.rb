@@ -1,3 +1,5 @@
+require 'minitest/autorun'
+require 'minitest/spec'
 require 'base85'
 
 describe Base85 do
@@ -44,7 +46,7 @@ describe Base85 do
 
     it 'handles random bytes' do
       10.times do
-        assert_invertible Random.bytes(rand(1000))
+        assert_invertible Array.new(rand(1000)) { rand(256) }.pack('C*')
       end
     end
 
