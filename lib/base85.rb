@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class Base85
   P, P2, P3, P4 = 85, 85 ** 2, 85 ** 3, 85 ** 4
   B, B4 = 256, 256 ** 4
